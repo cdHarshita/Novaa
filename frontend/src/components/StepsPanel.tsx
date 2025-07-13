@@ -1,95 +1,16 @@
 import React, { useState } from 'react';
 import { CheckCircle, Circle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import { Step } from '.././types'; // Assuming you have a types file for Step interface
 
-interface Step {
-  id: number;
-  title: string;
-  description: string;
-  status: 'completed' | 'current' | 'pending';
-  substeps?: string[];
-}
 
 interface StepsPanelProps {
   prompt: string;
+  steps: Step[];
 }
 
-const StepsPanel: React.FC<StepsPanelProps> = ({ prompt }) => {
+const StepsPanel: React.FC<StepsPanelProps> = ({ prompt, steps }) => {
   const [expandedSteps, setExpandedSteps] = useState<number[]>([1]);
 
-  const steps: Step[] = [
-    {
-      id: 1,
-      title: 'Project Setup',
-      description: 'Initialize project structure and dependencies',
-      status: 'completed',
-      substeps: [
-        'Create project directory',
-        'Setup package.json',
-        'Install dependencies',
-        'Configure build tools'
-      ]
-    },
-    {
-      id: 2,
-      title: 'Design System',
-      description: 'Define colors, typography, and component styles',
-      status: 'current',
-      substeps: [
-        'Create color palette',
-        'Define typography scale',
-        'Setup component library',
-        'Configure responsive breakpoints'
-      ]
-    },
-    {
-      id: 3,
-      title: 'Page Structure',
-      description: 'Build main pages and navigation',
-      status: 'pending',
-      substeps: [
-        'Create homepage layout',
-        'Build navigation component',
-        'Setup routing',
-        'Add footer section'
-      ]
-    },
-    {
-      id: 4,
-      title: 'Content Integration',
-      description: 'Add content based on your requirements',
-      status: 'pending',
-      substeps: [
-        'Parse user requirements',
-        'Generate appropriate content',
-        'Optimize images and media',
-        'Implement SEO basics'
-      ]
-    },
-    {
-      id: 5,
-      title: 'Interactive Features',
-      description: 'Add forms, animations, and user interactions',
-      status: 'pending',
-      substeps: [
-        'Add contact forms',
-        'Implement smooth animations',
-        'Setup user feedback',
-        'Add loading states'
-      ]
-    },
-    {
-      id: 6,
-      title: 'Testing & Optimization',
-      description: 'Test functionality and optimize performance',
-      status: 'pending',
-      substeps: [
-        'Cross-browser testing',
-        'Mobile responsiveness',
-        'Performance optimization',
-        'Accessibility improvements'
-      ]
-    }
-  ];
 
   const toggleStep = (stepId: number) => {
     setExpandedSteps(prev => 

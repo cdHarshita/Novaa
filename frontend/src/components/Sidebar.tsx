@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import StepsPanel from './StepsPanel';
 import FileExplorer from './FileExplorer';
 import { FileCode, List } from 'lucide-react';
+import { Step } from '../types'; // Assuming you have a types file for Step interface
 
 interface SidebarProps {
   prompt: string;
+  steps: Step[]
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ prompt }) => {
+const Sidebar: React.FC<SidebarProps & { steps: any }> = ({ prompt, steps }) => {
   const [activeTab, setActiveTab] = useState<'steps' | 'files'>('steps');
 
   return (
@@ -41,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ prompt }) => {
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
         {activeTab === 'steps' ? (
-          <StepsPanel prompt={prompt} />
+          <StepsPanel prompt={prompt} steps={steps} />
         ) : (
           <FileExplorer />
         )}

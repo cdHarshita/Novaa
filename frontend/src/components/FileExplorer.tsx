@@ -11,69 +11,67 @@ import {
   Search,
   MoreVertical
 } from 'lucide-react';
-
-interface FileNode {
-  name: string;
-  type: 'file' | 'folder';
-  extension?: string;
-  children?: FileNode[];
-  size?: string;
-  modified?: string;
-}
+import { FileItem } from '../types';
 
 const FileExplorer: React.FC = () => {
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['src', 'public']);
   const [selectedFile, setSelectedFile] = useState<string | null>('src/App.tsx');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const fileStructure: FileNode[] = [
+  // Updated fileStructure to use 'path' and remove extra fields
+  const fileStructure: FileItem[] = [
     {
       name: 'public',
       type: 'folder',
+      path: 'public',
       children: [
-        { name: 'index.html', type: 'file', extension: 'html', size: '2.1 KB', modified: '2 min ago' },
-        { name: 'favicon.ico', type: 'file', extension: 'ico', size: '1.2 KB', modified: '5 min ago' },
-        { name: 'logo.svg', type: 'file', extension: 'svg', size: '3.4 KB', modified: '5 min ago' }
+        { name: 'index.html', type: 'file', path: 'public/index.html' },
+        { name: 'favicon.ico', type: 'file', path: 'public/favicon.ico' },
+        { name: 'logo.svg', type: 'file', path: 'public/logo.svg' }
       ]
     },
     {
       name: 'src',
       type: 'folder',
+      path: 'src',
       children: [
         {
           name: 'components',
           type: 'folder',
+          path: 'src/components',
           children: [
-            { name: 'Header.tsx', type: 'file', extension: 'tsx', size: '1.8 KB', modified: 'Just now' },
-            { name: 'Navigation.tsx', type: 'file', extension: 'tsx', size: '2.3 KB', modified: '1 min ago' },
-            { name: 'Footer.tsx', type: 'file', extension: 'tsx', size: '1.1 KB', modified: '3 min ago' }
+            { name: 'Header.tsx', type: 'file', path: 'src/components/Header.tsx' },
+            { name: 'Navigation.tsx', type: 'file', path: 'src/components/Navigation.tsx' },
+            { name: 'Footer.tsx', type: 'file', path: 'src/components/Footer.tsx' }
           ]
         },
         {
           name: 'styles',
           type: 'folder',
+          path: 'src/styles',
           children: [
-            { name: 'globals.css', type: 'file', extension: 'css', size: '4.2 KB', modified: '2 min ago' },
-            { name: 'components.css', type: 'file', extension: 'css', size: '3.1 KB', modified: '4 min ago' }
+            { name: 'globals.css', type: 'file', path: 'src/styles/globals.css' },
+            { name: 'components.css', type: 'file', path: 'src/styles/components.css' }
           ]
         },
         {
           name: 'assets',
           type: 'folder',
+          path: 'src/assets',
           children: [
-            { name: 'hero-bg.jpg', type: 'file', extension: 'jpg', size: '245 KB', modified: '6 min ago' },
-            { name: 'logo.png', type: 'file', extension: 'png', size: '12 KB', modified: '6 min ago' }
+            { name: 'hero-bg.jpg', type: 'file', path: 'src/assets/hero-bg.jpg' },
+            { name: 'logo.png', type: 'file', path: 'src/assets/logo.png' }
           ]
         },
-        { name: 'App.tsx', type: 'file', extension: 'tsx', size: '3.2 KB', modified: 'Just now' },
-        { name: 'main.tsx', type: 'file', extension: 'tsx', size: '0.8 KB', modified: '5 min ago' },
-        { name: 'index.css', type: 'file', extension: 'css', size: '1.2 KB', modified: '5 min ago' }
+        { name: 'App.tsx', type: 'file', path: 'src/App.tsx' },
+        { name: 'main.tsx', type: 'file', path: 'src/main.tsx' },
+        { name: 'index.css', type: 'file', path: 'src/index.css' }
       ]
     },
-    { name: 'package.json', type: 'file', extension: 'json', size: '1.4 KB', modified: '7 min ago' },
-    { name: 'tsconfig.json', type: 'file', extension: 'json', size: '0.6 KB', modified: '7 min ago' },
-    { name: 'tailwind.config.js', type: 'file', extension: 'js', size: '0.4 KB', modified: '7 min ago' },
-    { name: 'README.md', type: 'file', extension: 'md', size: '2.1 KB', modified: '7 min ago' }
+    { name: 'package.json', type: 'file', path: 'package.json' },
+    { name: 'tsconfig.json', type: 'file', path: 'tsconfig.json' },
+    { name: 'tailwind.config.js', type: 'file', path: 'tailwind.config.js' },
+    { name: 'README.md', type: 'file', path: 'README.md' }
   ];
 
   const toggleFolder = (path: string) => {
@@ -84,16 +82,17 @@ const FileExplorer: React.FC = () => {
     );
   };
 
-  const getFileIcon = (node: FileNode) => {
+  const getFileIcon = (node: FileItem) => {
     if (node.type === 'folder') {
-      return expandedFolders.includes(node.name) ? (
+      return expandedFolders.includes(node.path) ? (
         <FolderOpen className="w-4 h-4 text-blue-400" />
       ) : (
         <Folder className="w-4 h-4 text-blue-400" />
       );
     }
 
-    switch (node.extension) {
+    const ext = node.name.split('.').pop();
+    switch (ext) {
       case 'tsx':
       case 'ts':
       case 'jsx':
@@ -117,13 +116,12 @@ const FileExplorer: React.FC = () => {
     }
   };
 
-  const renderFileNode = (node: FileNode, path: string = '', depth: number = 0) => {
-    const fullPath = path ? `${path}/${node.name}` : node.name;
-    const isExpanded = expandedFolders.includes(fullPath);
-    const isSelected = selectedFile === fullPath;
+  const renderFileItem = (node: FileItem, depth: number = 0) => {
+    const isExpanded = expandedFolders.includes(node.path);
+    const isSelected = selectedFile === node.path;
 
     return (
-      <div key={fullPath}>
+      <div key={node.path}>
         <div
           className={`flex items-center space-x-2 py-1.5 px-2 rounded cursor-pointer hover:bg-gray-700/50 transition-colors ${
             isSelected ? 'bg-purple-600/30 border-l-2 border-purple-400' : ''
@@ -131,14 +129,12 @@ const FileExplorer: React.FC = () => {
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
           onClick={() => {
             if (node.type === 'folder') {
-              toggleFolder(fullPath);
+              toggleFolder(node.path);
             } else {
-              setSelectedFile(fullPath);
-              // Dispatch custom event to notify CodeEditor with more detail
+              setSelectedFile(node.path);
               const event = new CustomEvent('fileSelected', {
-                detail: { filePath: fullPath }
+                detail: { filePath: node.path }
               });
-              console.log('Dispatching file selection:', fullPath); // Debug log
               window.dispatchEvent(event);
             }
           }}
@@ -154,14 +150,10 @@ const FileExplorer: React.FC = () => {
           )}
           {getFileIcon(node)}
           <span className="text-sm text-gray-200 flex-1">{node.name}</span>
-          {node.type === 'file' && (
-            <span className="text-xs text-gray-500">{node.size}</span>
-          )}
         </div>
-        
         {node.type === 'folder' && isExpanded && node.children && (
           <div>
-            {node.children.map(child => renderFileNode(child, fullPath, depth + 1))}
+            {node.children.map(child => renderFileItem(child, depth + 1))}
           </div>
         )}
       </div>
@@ -183,7 +175,6 @@ const FileExplorer: React.FC = () => {
             </button>
           </div>
         </div>
-        
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -195,12 +186,10 @@ const FileExplorer: React.FC = () => {
           />
         </div>
       </div>
-
       {/* File Tree */}
       <div className="flex-1 overflow-y-auto p-2">
-        {fileStructure.map(node => renderFileNode(node))}
+        {fileStructure.map(node => renderFileItem(node))}
       </div>
-
       {/* File Details Panel */}
       {selectedFile && (
         <div className="border-t border-gray-700 p-4 bg-gray-800/50">

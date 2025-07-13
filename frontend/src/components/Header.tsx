@@ -28,21 +28,6 @@ const Header: React.FC<HeaderProps> = ({ prompt }) => {
             <span className="text-sm text-gray-200 max-w-md truncate">{prompt}</span>
           </div>
         </div>
-        
-        <div className="flex items-center space-x-2">
-          <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center space-x-2">
-            <Play className="w-4 h-4" />
-            <span className="hidden sm:inline">Preview</span>
-          </button>
-          <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center space-x-2">
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Export</span>
-          </button>
-          <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center space-x-2">
-            <Share className="w-4 h-4" />
-            <span className="hidden sm:inline">Share</span>
-          </button>
-        </div>
       </div>
     </header>
   );

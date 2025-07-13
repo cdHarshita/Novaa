@@ -7,12 +7,16 @@ import { basePrompt as nodeBasePrompt } from './defaults/node';
 import { basePrompt as reactBasePrompt } from './defaults/react';
 import { BASE_PROMPT } from './prompts';
 import { getSystemPrompt } from './prompts';
+import cors from 'cors'; // Assuming you have a cors module for handling CORS
 
 // Load environment variables from .env file
 dotenv.config();
 
 const app = express();
 
+app.use(cors({
+  origin: "http://localhost:5173" // Your Vite dev server
+})); // Use CORS middleware
 app.use(express.json());
 
 
