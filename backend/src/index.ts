@@ -128,7 +128,7 @@ app.post("/chat", async (req,res)=>{
     console.log(response);
 
     res.json({
-      response: text,
+      response: response.text,
     });
 
   } catch (err) {

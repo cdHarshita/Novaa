@@ -1,144 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { FileCode, Save, Copy, Download } from 'lucide-react';
+import { FileItem } from '../types';
 
-const CodeEditor: React.FC = () => {
-  const [selectedFile, setSelectedFile] = useState('src/App.tsx');
+interface CodeEditorProps {
+  selectedFile: string | null;
+  files: FileItem[];
+}
+
+const CodeEditor: React.FC<CodeEditorProps> = ({ selectedFile, files }) => {
   const [code, setCode] = useState('');
   const [language, setLanguage] = useState('typescript');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sample file contents
-  const fileContents: Record<string, { content: string; language: string }> = {
-    'src/App.tsx': {
-      content: `import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import LandingPage from './components/LandingPage';
-import BuilderPage from './components/BuilderPage';
-
-function App() {
-  return (
-    <Router>
-      <div className="min-h-screen bg-gray-900">
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/builder" element={<BuilderPage />} />
-        </Routes>
-      </div>
-    </Router>
-  );
-}
-
-export default App;`,
-      language: 'typescript'
-    },
-    'src/components/Header.tsx': {
-      content: `import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Play, Download, Share } from 'lucide-react';
-
-interface HeaderProps {
-  prompt: string;
-}
-
-const Header: React.FC<HeaderProps> = ({ prompt }) => {
-  const navigate = useNavigate();
-
-  return (
-    <header className="bg-gray-800 border-b border-gray-700 p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate('/')}
-            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center space-x-2">
-            <Sparkles className="w-6 h-6 text-purple-400" />
-            <span className="text-xl font-bold text-white">WebCraft</span>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-};
-
-export default Header;`,
-      language: 'typescript'
-    },
-    'src/index.css': {
-      content: `@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* Custom scrollbar styles */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #1f2937;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #4b5563;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-}
-
-/* Smooth transitions */
-* {
-  transition: color 0.2s ease, background-color 0.2s ease;
-}`,
-      language: 'css'
-    },
-    'package.json': {
-      content: `{
-  "name": "website-builder",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "lucide-react": "^0.344.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^7.6.3",
-    "@monaco-editor/react": "^4.6.0"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.5",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.18",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5.5.3",
-    "vite": "^5.4.2"
-  }
-}`,
-      language: 'json'
-    }
-  };
-
   useEffect(() => {
+    if (!selectedFile) {
+      setCode('// Select a file to view its contents');
+      setLanguage('plaintext');
+      return;
+    }
+
     setIsLoading(true);
-    const fileData = fileContents[selectedFile];
+    const fileData = files.find(f => f.path === selectedFile);
     if (fileData) {
-      setCode(fileData.content);
-      setLanguage(fileData.language);
-    } else {
-      // Handle files not in our sample data
-      setCode(`// File: ${selectedFile}\n// Content not available in demo`);
+      setCode(fileData.content || '');
       const ext = selectedFile.split('.').pop()?.toLowerCase();
       switch (ext) {
         case 'tsx':
@@ -164,23 +49,12 @@ export default Header;`,
         default:
           setLanguage('plaintext');
       }
+    } else {
+      setCode(`// File: ${selectedFile}\n// Content not available`);
+      setLanguage('plaintext');
     }
     setIsLoading(false);
-  }, [selectedFile]);
-
-  // Listen for file selection from FileExplorer
-  useEffect(() => {
-    const handleFileSelect = (event: any) => {
-      const filePath = event.detail.filePath;
-      console.log('File selected:', filePath); // Debug log
-      setSelectedFile(filePath);
-    };
-
-    window.addEventListener('fileSelected', handleFileSelect);
-    return () => {
-      window.removeEventListener('fileSelected', handleFileSelect);
-    };
-  }, []);
+  }, [selectedFile, files]);
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
@@ -198,6 +72,8 @@ export default Header;`,
   };
 
   const downloadFile = () => {
+    if (!selectedFile) return;
+    
     const blob = new Blob([code], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -215,7 +91,7 @@ export default Header;`,
       <div className="flex items-center justify-between p-3 bg-gray-800 border-b border-gray-700">
         <div className="flex items-center space-x-3">
           <FileCode className="w-5 h-5 text-purple-400" />
-          <span className="text-sm font-medium text-white">{selectedFile}</span>
+          <span className="text-sm font-medium text-white">{selectedFile || 'No file selected'}</span>
           {isLoading && <span className="text-xs text-blue-400">Loading...</span>}
           <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
             {language}
@@ -234,6 +110,7 @@ export default Header;`,
             onClick={downloadFile}
             className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
             title="Download file"
+            disabled={!selectedFile}
           >
             <Download className="w-4 h-4" />
           </button>
@@ -241,6 +118,7 @@ export default Header;`,
             onClick={saveFile}
             className="p-2 text-green-400 hover:text-green-300 hover:bg-gray-700 rounded transition-colors"
             title="Save file"
+            disabled={!selectedFile}
           >
             <Save className="w-4 h-4" />
           </button>

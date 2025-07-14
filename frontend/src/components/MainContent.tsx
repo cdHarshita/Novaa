@@ -2,9 +2,20 @@ import React, { useState } from 'react';
 import CodeEditor from './CodeEditor';
 import PreviewPanel from './PreviewPanel';
 import { Code, Eye } from 'lucide-react';
+import { FileItem } from '../types';
 
-const MainContent: React.FC = () => {
+interface MainContentProps {
+  selectedFile: string | null;
+  files: FileItem[];
+}
+
+const MainContent: React.FC<MainContentProps> = ({ selectedFile, files }) => {
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
+
+  // Find the selected file's content
+  const selectedFileContent = selectedFile 
+    ? files.find(f => f.path === selectedFile)?.content || ''
+    : '';
 
   return (
     <div className="flex-1 bg-gray-900 flex flex-col">
@@ -36,7 +47,11 @@ const MainContent: React.FC = () => {
 
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'code' ? <CodeEditor /> : <PreviewPanel />}
+        {activeTab === 'code' ? (
+        <CodeEditor selectedFile={selectedFile} files={files} />
+      ) : (
+        <PreviewPanel />
+      )}
       </div>
     </div>
   );

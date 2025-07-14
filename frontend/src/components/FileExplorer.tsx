@@ -13,66 +13,74 @@ import {
 } from 'lucide-react';
 import { FileItem } from '../types';
 
-const FileExplorer: React.FC = () => {
+interface FileExplorerProps {
+  files: FileItem[];
+  onFileSelect: (filePath: string) => void;
+}
+
+const FileExplorer: React.FC<FileExplorerProps> = ({ files = [], onFileSelect }) => {
+  // Ensure files is always an array
+  const fileList = Array.isArray(files) ? files : [];
+  
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['src', 'public']);
-  const [selectedFile, setSelectedFile] = useState<string | null>('src/App.tsx');
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Updated fileStructure to use 'path' and remove extra fields
-  const fileStructure: FileItem[] = [
-    {
-      name: 'public',
-      type: 'folder',
-      path: 'public',
-      children: [
-        { name: 'index.html', type: 'file', path: 'public/index.html' },
-        { name: 'favicon.ico', type: 'file', path: 'public/favicon.ico' },
-        { name: 'logo.svg', type: 'file', path: 'public/logo.svg' }
-      ]
-    },
-    {
-      name: 'src',
-      type: 'folder',
-      path: 'src',
-      children: [
-        {
-          name: 'components',
-          type: 'folder',
-          path: 'src/components',
-          children: [
-            { name: 'Header.tsx', type: 'file', path: 'src/components/Header.tsx' },
-            { name: 'Navigation.tsx', type: 'file', path: 'src/components/Navigation.tsx' },
-            { name: 'Footer.tsx', type: 'file', path: 'src/components/Footer.tsx' }
-          ]
-        },
-        {
-          name: 'styles',
-          type: 'folder',
-          path: 'src/styles',
-          children: [
-            { name: 'globals.css', type: 'file', path: 'src/styles/globals.css' },
-            { name: 'components.css', type: 'file', path: 'src/styles/components.css' }
-          ]
-        },
-        {
-          name: 'assets',
-          type: 'folder',
-          path: 'src/assets',
-          children: [
-            { name: 'hero-bg.jpg', type: 'file', path: 'src/assets/hero-bg.jpg' },
-            { name: 'logo.png', type: 'file', path: 'src/assets/logo.png' }
-          ]
-        },
-        { name: 'App.tsx', type: 'file', path: 'src/App.tsx' },
-        { name: 'main.tsx', type: 'file', path: 'src/main.tsx' },
-        { name: 'index.css', type: 'file', path: 'src/index.css' }
-      ]
-    },
-    { name: 'package.json', type: 'file', path: 'package.json' },
-    { name: 'tsconfig.json', type: 'file', path: 'tsconfig.json' },
-    { name: 'tailwind.config.js', type: 'file', path: 'tailwind.config.js' },
-    { name: 'README.md', type: 'file', path: 'README.md' }
-  ];
+  //const fileStructure: FileItem[] = [
+    // {
+    //   name: 'public',
+    //   type: 'folder',
+    //   path: 'public',
+    //   children: [
+    //     { name: 'index.html', type: 'file', path: 'public/index.html' },
+    //     { name: 'favicon.ico', type: 'file', path: 'public/favicon.ico' },
+    //     { name: 'logo.svg', type: 'file', path: 'public/logo.svg' }
+    //   ]
+    // },
+    // {
+    //   name: 'src',
+    //   type: 'folder',
+    //   path: 'src',
+    //   children: [
+    //     {
+    //       name: 'components',
+    //       type: 'folder',
+    //       path: 'src/components',
+    //       children: [
+    //         { name: 'Header.tsx', type: 'file', path: 'src/components/Header.tsx' },
+    //         { name: 'Navigation.tsx', type: 'file', path: 'src/components/Navigation.tsx' },
+    //         { name: 'Footer.tsx', type: 'file', path: 'src/components/Footer.tsx' }
+    //       ]
+    //     },
+    //     {
+    //       name: 'styles',
+    //       type: 'folder',
+    //       path: 'src/styles',
+    //       children: [
+    //         { name: 'globals.css', type: 'file', path: 'src/styles/globals.css' },
+    //         { name: 'components.css', type: 'file', path: 'src/styles/components.css' }
+    //       ]
+    //     },
+    //     {
+    //       name: 'assets',
+    //       type: 'folder',
+    //       path: 'src/assets',
+    //       children: [
+    //         { name: 'hero-bg.jpg', type: 'file', path: 'src/assets/hero-bg.jpg' },
+    //         { name: 'logo.png', type: 'file', path: 'src/assets/logo.png' }
+    //       ]
+    //     },
+    //     { name: 'App.tsx', type: 'file', path: 'src/App.tsx' },
+    //     { name: 'main.tsx', type: 'file', path: 'src/main.tsx' },
+    //     { name: 'index.css', type: 'file', path: 'src/index.css' }
+    //   ]
+    // },
+    // { name: 'package.json', type: 'file', path: 'package.json' },
+    // { name: 'tsconfig.json', type: 'file', path: 'tsconfig.json' },
+    // { name: 'tailwind.config.js', type: 'file', path: 'tailwind.config.js' },
+    // { name: 'README.md', type: 'file', path: 'README.md' }
+  //];
 
   const toggleFolder = (path: string) => {
     setExpandedFolders(prev => 
@@ -132,10 +140,7 @@ const FileExplorer: React.FC = () => {
               toggleFolder(node.path);
             } else {
               setSelectedFile(node.path);
-              const event = new CustomEvent('fileSelected', {
-                detail: { filePath: node.path }
-              });
-              window.dispatchEvent(event);
+              onFileSelect(node.path);
             }
           }}
         >
@@ -188,7 +193,13 @@ const FileExplorer: React.FC = () => {
       </div>
       {/* File Tree */}
       <div className="flex-1 overflow-y-auto p-2">
-        {fileStructure.map(node => renderFileItem(node))}
+        {fileList.length > 0 ? (
+          fileList.map(node => renderFileItem(node))
+        ) : (
+          <div className="text-gray-400 text-sm p-4 text-center">
+            No files to display
+          </div>
+        )}
       </div>
       {/* File Details Panel */}
       {selectedFile && (

@@ -2,15 +2,21 @@ import React, { useState } from 'react';
 import StepsPanel from './StepsPanel';
 import FileExplorer from './FileExplorer';
 import { FileCode, List } from 'lucide-react';
-import { Step } from '../types'; // Assuming you have a types file for Step interface
+import { Step, FileItem } from '../types';
 
 interface SidebarProps {
   prompt: string;
-  steps: Step[]
+  steps: Step[];
+  files: FileItem[];
+  onFileSelect: (filePath: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps & { steps: any }> = ({ prompt, steps }) => {
+const Sidebar: React.FC<SidebarProps> = ({ prompt, steps, files, onFileSelect }) => {
   const [activeTab, setActiveTab] = useState<'steps' | 'files'>('steps');
+
+  const handleFileSelect = (filePath: string) => {
+    onFileSelect(filePath);
+  };
 
   return (
     <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
@@ -45,7 +51,7 @@ const Sidebar: React.FC<SidebarProps & { steps: any }> = ({ prompt, steps }) => 
         {activeTab === 'steps' ? (
           <StepsPanel prompt={prompt} steps={steps} />
         ) : (
-          <FileExplorer />
+          <FileExplorer files={files} onFileSelect={handleFileSelect} />
         )}
       </div>
     </div>
