@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BACKEND_URL } from './config';
 import axios from 'axios';
@@ -16,6 +16,7 @@ const BuilderPage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<Step | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const initializationRef = useRef({ started: false, completed: false });
 
   const processFileStep = (step: Step, existingFiles: FileItem[]): FileItem[] => {
     if (step.type !== StepType.CreateFile || !step.path || !step.code) {
@@ -64,7 +65,13 @@ const BuilderPage: React.FC = () => {
   };
 
   const init = useCallback(async () => {
-    if (isInitialized) return;
+    // Check if initialization has already started or completed
+    if (initializationRef.current.started || initializationRef.current.completed || isInitialized) {
+      return;
+    }
+    
+    // Mark initialization as started
+    initializationRef.current.started = true;
 
     try {
       console.log('Starting initialization...');
@@ -74,11 +81,22 @@ const BuilderPage: React.FC = () => {
         prompt: prompt.trim()
       });
       
+      console.log('Template response data:', templateResponse.data);
+      
       const {prompts, uiPrompts} = templateResponse.data;
+      
+      // Log and validate template response data
+      console.log('Extracted prompts:', prompts);
+      console.log('Extracted uiPrompts:', uiPrompts);
       
       // Validate template response
       if (!uiPrompts || !Array.isArray(uiPrompts) || uiPrompts.length === 0) {
         console.error('Invalid template response:', templateResponse.data);
+        return;
+      }
+      
+      if (!prompts || !Array.isArray(prompts)) {
+        console.error('Invalid prompts in template response:', prompts);
         return;
       }
 
@@ -108,26 +126,92 @@ const BuilderPage: React.FC = () => {
 
       // Step 2: Get chat response
       console.log('Getting chat steps...');
-      const chatResponse = await axios.post(`${BACKEND_URL}/chat`, {
-        messages: [...prompts, prompt].map((msg: string) => ({ role: 'user', content: msg })),
-      });
+      
+      // Log raw prompts data
+      console.log('Raw prompts from template:', prompts);
 
-      // Validate chat response
-      if (!chatResponse.data || !chatResponse.data.response) {
-        console.error('Invalid chat response:', chatResponse.data);
+      // Validate prompts before sending
+      if (!Array.isArray(prompts)) {
+        console.error('Invalid prompts array:', prompts);
         return;
       }
 
-      console.log('Chat response received:', chatResponse.data.response);
+      if (prompts.length === 0) {
+        console.error('Empty prompts array from template response');
+        return;
+      }
+
+      // Construct messages array carefully
+      const messages = prompts.map((content, index) => {
+        console.log(`Processing prompt ${index}:`, content);
+        return {
+          role: "user" as const,
+          content: typeof content === 'string' ? content : JSON.stringify(content)
+        };
+      });
+
+      // Add the final prompt
+      console.log('Adding final prompt:', prompt);
+      messages.push({
+        role: "user" as const,
+        content: prompt
+      });
+
+      console.log('Final messages array:', JSON.stringify(messages, null, 2));
+
+      // Log the exact request we're about to send
+      const requestBody = { messages };
+      console.log('Sending chat request to:', `${BACKEND_URL}/chat`);
+      console.log('With request body:', JSON.stringify(requestBody, null, 2));
+      
+      let chatResponseData: { response?: string } = {};
+      
+      try {
+        const chatResponse = await axios.post(`${BACKEND_URL}/chat`, {
+          messages
+        });
+        console.log('Raw chat response:', chatResponse.data);
+
+        chatResponseData = chatResponse.data;
+
+        // Validate chat response
+        if (!chatResponseData) {
+          console.error('Empty chat response');
+          return;
+        }
+
+        if (!chatResponseData.response) {
+          console.error('Chat response missing "response" field:', chatResponseData);
+          return;
+        }
+
+        if (typeof chatResponseData.response !== 'string') {
+          console.error('Chat response is not a string:', chatResponseData.response);
+          return;
+        }
+      } catch (error) {
+        const chatError = error as Error & { 
+          response?: { 
+            data: unknown 
+          } 
+        };
+        console.error('Error making chat request:', chatError.message);
+        if (chatError.response) {
+          console.error('Chat error response:', chatError.response.data);
+        }
+        return;
+      }
+
+      console.log('Chat response received:', chatResponseData.response);
 
       // Process chat steps
       let chatSteps: Step[] = [];
       try {
-        chatSteps = parseXml(chatResponse.data.response);
+        chatSteps = parseXml(chatResponseData.response);
         console.log('Parsed chat steps:', chatSteps);
       } catch (parseError) {
         console.error('Error parsing chat response XML:', parseError);
-        console.log('XML content that failed:', chatResponse.data.response);
+        console.log('XML content that failed:', chatResponseData.response);
         return;
       }
 
@@ -165,10 +249,13 @@ const BuilderPage: React.FC = () => {
         return prevFiles;
       });
 
+      initializationRef.current.completed = true;
       setIsInitialized(true);
       console.log('Initialization complete');
     } catch (error) {
       console.error('Error in init:', error);
+      // Reset initialization status on error
+      initializationRef.current.started = false;
     }
   }, [prompt, isInitialized]);
 

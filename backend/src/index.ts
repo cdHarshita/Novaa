@@ -93,6 +93,7 @@ app.post("/template", async(req,res)=>{
 app.post("/chat", async (req,res)=>{
   try {
     const messages = req.body.messages; // same format as Claude messages
+    //console.log(messages);
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
@@ -111,7 +112,7 @@ app.post("/chat", async (req,res)=>{
         parts: [{ text: systemPrompt }],
       });
     }
-
+    //console.log(history);
     const result = await model.generateContent({
       contents: history,
       generationConfig: {
@@ -121,14 +122,15 @@ app.post("/chat", async (req,res)=>{
         topK: 1,
       },
     });
+    //console.log('Raw Gemini result:', result);
+    
+    // Extract the text from the first candidate's first part
+    const text = result.response.text();
+   // console.log('Extracted text:', text);
 
-    const response = result.response;
-    const text = response.text();
-
-    console.log(response);
-
+    // Send just the text as the response
     res.json({
-      response: response.text,
+      response: text
     });
 
   } catch (err) {
