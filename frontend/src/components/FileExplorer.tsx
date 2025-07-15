@@ -19,12 +19,24 @@ interface FileExplorerProps {
 }
 
 const FileExplorer: React.FC<FileExplorerProps> = ({ files = [], onFileSelect }) => {
-  // Ensure files is always an array
+  // Ensure files is always an array and log the structure
   const fileList = Array.isArray(files) ? files : [];
   
   const [expandedFolders, setExpandedFolders] = useState<string[]>(['src', 'public']);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Function to find a file by path
+  const findFileByPath = (items: FileItem[], path: string): FileItem | null => {
+    for (const item of items) {
+      if (item.path === path) return item;
+      if (item.type === 'folder' && item.children) {
+        const found = findFileByPath(item.children, path);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
 
   // Updated fileStructure to use 'path' and remove extra fields
   //const fileStructure: FileItem[] = [
@@ -139,8 +151,14 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files = [], onFileSelect })
             if (node.type === 'folder') {
               toggleFolder(node.path);
             } else {
-              setSelectedFile(node.path);
-              onFileSelect(node.path);
+              const file = findFileByPath(fileList, node.path);
+              if (file && file.content) {
+                // console.log(`Selected file ${node.path} with content:`, file.content);
+                setSelectedFile(node.path);
+                onFileSelect(node.path);
+              } else {
+                console.warn(`File ${node.path} has no content`);
+              }
             }
           }}
         >
@@ -194,7 +212,16 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files = [], onFileSelect })
       {/* File Tree */}
       <div className="flex-1 overflow-y-auto p-2">
         {fileList.length > 0 ? (
-          fileList.map(node => renderFileItem(node))
+          <>
+            {fileList
+              .sort((a, b) => {
+                // Sort folders first, then files
+                if (a.type === 'folder' && b.type !== 'folder') return -1;
+                if (a.type !== 'folder' && b.type === 'folder') return 1;
+                return a.name.localeCompare(b.name);
+              })
+              .map(node => renderFileItem(node))}
+          </>
         ) : (
           <div className="text-gray-400 text-sm p-4 text-center">
             No files to display

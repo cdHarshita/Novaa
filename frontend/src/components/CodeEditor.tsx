@@ -14,16 +14,39 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ selectedFile, files }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+
     if (!selectedFile) {
       setCode('// Select a file to view its contents');
       setLanguage('plaintext');
       return;
     }
 
+    if (!Array.isArray(files) || files.length === 0) {
+      setCode('// No files available');
+      return;
+    }
+
     setIsLoading(true);
-    const fileData = files.find(f => f.path === selectedFile);
-    if (fileData) {
-      setCode(fileData.content || '');
+    const findFileInTree = (items: FileItem[], path: string): FileItem | undefined => {
+      for (const item of items) {
+        if (item.path === path) return item;
+        if (item.type === 'folder' && item.children) {
+          const found = findFileInTree(item.children, path);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+
+    const fileData = findFileInTree(files, selectedFile);
+
+    if (fileData && fileData.content) {
+      // console.log('[CodeEditor] Loading file content:', {
+      //   path: selectedFile,
+      //   contentLength: fileData.content.length,
+      //   timestamp: new Date().toISOString()
+      // });
+      setCode(fileData.content);
       const ext = selectedFile.split('.').pop()?.toLowerCase();
       switch (ext) {
         case 'tsx':
@@ -50,7 +73,18 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ selectedFile, files }) => {
           setLanguage('plaintext');
       }
     } else {
-      setCode(`// File: ${selectedFile}\n// Content not available`);
+      // console.log('[CodeEditor] File load error:', {
+      //   path: selectedFile,
+      //   error: !fileData ? 'FILE_NOT_FOUND' : 'NO_CONTENT',
+      //   timestamp: new Date().toISOString()
+      // });
+      if (!fileData) {
+        setCode(`// File: ${selectedFile}\n// Error: File not found in the file system`);
+      } else if (!fileData.content) {
+        setCode(`// File: ${selectedFile}\n// Error: File exists but has no content`);
+      } else {
+        setCode(`// File: ${selectedFile}\n// Error: Unexpected state`);
+      }
       setLanguage('plaintext');
     }
     setIsLoading(false);
@@ -67,7 +101,6 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ selectedFile, files }) => {
   };
 
   const saveFile = () => {
-    // In a real implementation, this would save to the backend
     console.log('Saving file:', selectedFile);
   };
 

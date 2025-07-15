@@ -20,46 +20,109 @@ const BuilderPage: React.FC = () => {
 
   const processFileStep = (step: Step, existingFiles: FileItem[]): FileItem[] => {
     if (step.type !== StepType.CreateFile || !step.path || !step.code) {
+      //console.log('[BuilderPage] Invalid file step:', { step });
       return existingFiles;
     }
 
+    console.log('[BuilderPage] Processing file step:', {
+      path: step.path,
+      codeLength: step.code.length,
+      timestamp: new Date().toISOString()
+    });
+
     const newFiles = [...existingFiles];
     const filePath = step.path;
-    const fileName = filePath.split('/').pop() || '';
-
-    // Create folder structure first
     const pathParts = filePath.split('/');
-    pathParts.pop(); // Remove filename
+    const fileName = pathParts[pathParts.length - 1];
+
+    // First check if this file exists at any level in the tree
+    const findAndUpdateFile = (files: FileItem[], targetPath: string): boolean => {
+      for (let i = 0; i < files.length; i++) {
+        if (files[i].path === targetPath) {
+          // Update existing file with safety check
+          const updatedContent = step.code?.trim() || '';
+          files[i] = {
+            ...files[i],
+            content: updatedContent,
+            type: 'file'
+          };
+          console.log('[BuilderPage] Updated existing file:', targetPath);
+          return true;
+        }
+        if (files[i].type === 'folder' && files[i].children) {
+          const children = files[i].children;
+          if (Array.isArray(children) && findAndUpdateFile(children, targetPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    // Try to update existing file first
+    if (findAndUpdateFile(newFiles, filePath)) {
+      return newFiles;
+    }
+
+    // If file doesn't exist, create it with its directory structure
+    let currentFiles = newFiles;
     let currentPath = '';
-    
-    pathParts.forEach(folder => {
-      currentPath = currentPath ? `${currentPath}/${folder}` : folder;
-      const folderExists = newFiles.some(f => f.path === currentPath && f.type === 'folder');
+
+    // Handle root-level files
+    if (pathParts.length === 1) {
+      const existingFileIndex = newFiles.findIndex(f => f.path === filePath);
+      const rootFile: FileItem = {
+        path: filePath,
+        name: fileName,
+        type: 'file',
+        content: step.code.trim()
+      };
       
-      if (!folderExists) {
-        newFiles.push({
+      if (existingFileIndex >= 0) {
+        newFiles[existingFileIndex] = rootFile;
+        console.log('[BuilderPage] Updated root file:', filePath);
+      } else {
+        newFiles.push(rootFile);
+        console.log('[BuilderPage] Created new root file:', filePath);
+      }
+      return newFiles;
+    }
+
+    // Process directories
+    for (let i = 0; i < pathParts.length - 1; i++) {
+      const folder = pathParts[i];
+      currentPath = currentPath ? `${currentPath}/${folder}` : folder;
+      
+      let folderNode = currentFiles.find(f => f.path === currentPath && f.type === 'folder');
+      
+      if (!folderNode) {
+        folderNode = {
           path: currentPath,
           name: folder,
           type: 'folder',
           children: []
-        });
+        };
+        currentFiles.push(folderNode);
+        console.log('[BuilderPage] Created new directory:', currentPath);
       }
-    });
 
-    // Create or update file
-    const newFile: FileItem = {
+      // Ensure children array exists
+      if (!Array.isArray(folderNode.children)) {
+        folderNode.children = [];
+      }
+      currentFiles = folderNode.children;
+    }
+
+    // Create file in the final directory
+    const fileNode: FileItem = {
       path: filePath,
       name: fileName,
       type: 'file',
-      content: step.code
+      content: step.code.trim()
     };
 
-    const fileIndex = newFiles.findIndex(f => f.path === filePath);
-    if (fileIndex >= 0) {
-      newFiles[fileIndex] = newFile;
-    } else {
-      newFiles.push(newFile);
-    }
+    currentFiles.push(fileNode);
+    console.log('[BuilderPage] Created new file:', filePath);
 
     return newFiles;
   };
@@ -81,42 +144,41 @@ const BuilderPage: React.FC = () => {
         prompt: prompt.trim()
       });
       
-      console.log('Template response data:', templateResponse.data);
-      
       const {prompts, uiPrompts} = templateResponse.data;
-      
-      // Log and validate template response data
-      console.log('Extracted prompts:', prompts);
-      console.log('Extracted uiPrompts:', uiPrompts);
       
       // Validate template response
       if (!uiPrompts || !Array.isArray(uiPrompts) || uiPrompts.length === 0) {
         console.error('Invalid template response:', templateResponse.data);
         return;
       }
-      
-      if (!prompts || !Array.isArray(prompts)) {
-        console.error('Invalid prompts in template response:', prompts);
-        return;
-      }
 
       // Parse template steps
       let templateSteps: Step[] = [];
       try {
-        templateSteps = parseXml(uiPrompts[0]).map((x: Step, index: number) => ({
-          ...x,
-          id: index + 1,
-          status: "pending" as const
-        }));
+        templateSteps = parseXml(uiPrompts[0])
+          .filter((step: Step) => {
+            // Filter out steps without necessary data
+            if (step.type === StepType.CreateFile) {
+              return step.path && step.code;
+            }
+            return true;
+          })
+          .map((x: Step, index: number) => ({
+            ...x,
+            id: index + 1,
+            status: "pending" as "pending"
+          }));
         
-        setSteps(templateSteps);
-        
-        // Process template files
+        // Process template files first
         let updatedFiles: FileItem[] = [];
         templateSteps.forEach(step => {
-          updatedFiles = processFileStep(step, updatedFiles);
+          if (step.type === StepType.CreateFile) {
+            updatedFiles = processFileStep(step, updatedFiles);
+          }
         });
+        
         setFiles(updatedFiles);
+        setSteps(templateSteps);
         
         console.log('Template steps processed:', templateSteps.length);
       } catch (parseError) {
@@ -127,42 +189,25 @@ const BuilderPage: React.FC = () => {
       // Step 2: Get chat response
       console.log('Getting chat steps...');
       
-      // Log raw prompts data
-      console.log('Raw prompts from template:', prompts);
-
       // Validate prompts before sending
       if (!Array.isArray(prompts)) {
         console.error('Invalid prompts array:', prompts);
         return;
       }
 
-      if (prompts.length === 0) {
-        console.error('Empty prompts array from template response');
-        return;
-      }
-
       // Construct messages array carefully
-      const messages = prompts.map((content, index) => {
-        console.log(`Processing prompt ${index}:`, content);
-        return {
-          role: "user" as const,
-          content: typeof content === 'string' ? content : JSON.stringify(content)
-        };
-      });
+      const messages = prompts.map(content => ({
+        role: "user" as const,
+        content: typeof content === 'string' ? content : JSON.stringify(content)
+      }));
 
       // Add the final prompt
-      console.log('Adding final prompt:', prompt);
       messages.push({
         role: "user" as const,
         content: prompt
       });
 
-      console.log('Final messages array:', JSON.stringify(messages, null, 2));
-
-      // Log the exact request we're about to send
-      const requestBody = { messages };
-      console.log('Sending chat request to:', `${BACKEND_URL}/chat`);
-      console.log('With request body:', JSON.stringify(requestBody, null, 2));
+      console.log('Sending chat request with messages:', JSON.stringify(messages, null, 2));
       
       let chatResponseData: { response?: string } = {};
       
@@ -218,19 +263,30 @@ const BuilderPage: React.FC = () => {
       const maxTemplateId = Math.max(...templateSteps.map(s => s.id));
 
       if (chatSteps.length > 0) {
-        // Update files from chat steps all at once
+        // Filter out invalid steps but allow updates to existing files
+        const filteredChatSteps = chatSteps.filter((step: Step) => {
+          if (step.type === StepType.CreateFile) {
+            // Only filter out steps without required data
+            return step.path && step.code;
+          }
+          return true;
+        });
+
+        // Update files from filtered chat steps
         setFiles(prevFiles => {
           let newFiles = [...prevFiles];
-          chatSteps.forEach(step => {
-            newFiles = processFileStep(step, newFiles);
+          filteredChatSteps.forEach(step => {
+            if (step.type === StepType.CreateFile) {
+              newFiles = processFileStep(step, newFiles);
+            }
           });
           return newFiles;
         });
 
-        // Add chat steps
+        // Add filtered chat steps
         setSteps(prevSteps => [
           ...prevSteps,
-          ...chatSteps.map((x, index) => ({
+          ...filteredChatSteps.map((x, index) => ({
             ...x,
             id: maxTemplateId + index + 1,
             status: "pending" as const
