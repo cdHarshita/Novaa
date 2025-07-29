@@ -388,9 +388,9 @@ const BuilderPage: React.FC = () => {
       if (firstStep) {
         setSteps(prevSteps => prevSteps.map(step => ({
           ...step,
-          status: step.id === firstStep.id ? "current" : step.status
+          status: step.id === firstStep.id ? "in-progress" : step.status
         })));
-        setCurrentStep(firstStep);
+        setCurrentStep({ ...firstStep, status: "in-progress" });
       }
     }
   }, [steps, currentStep]);
@@ -412,19 +412,21 @@ const BuilderPage: React.FC = () => {
             if (step.id === currentStep.id) {
               return { ...step, status: "completed" as const };
             }
-            // Find next uncompleted step and mark it as current
+            // Find next uncompleted step and mark it as in-progress
             if (step.id === currentStep.id + 1 && step.status === "pending") {
-              return { ...step, status: "current" as const };
+              return { ...step, status: "in-progress" as const };
             }
             return step;
           });
-          
+
           // Find the new current step
-          const nextStep = updatedSteps.find(step => step.status === "current");
+          const nextStep = updatedSteps.find(step => step.status === "in-progress");
           if (nextStep) {
-            setCurrentStep(nextStep);
+            setCurrentStep({ ...nextStep, status: "in-progress" });
+          } else {
+            setCurrentStep(null);
           }
-          
+
           return updatedSteps;
         });
         

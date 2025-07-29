@@ -9,6 +9,15 @@ export interface Step {
   id: number;
   title: string;
   description: string;
-  status: 'completed' | 'current' | 'pending';
-  substeps?: string[];
+  type: StepType;
+  status: 'pending' | 'in-progress' | 'completed';
+  code?: string;
+  path?: string;
+}
+export interface FileItem {
+  name: string;
+  type: 'file' | 'folder';
+  children?: FileItem[];
+  content?: string;
+  path: string;
 }
